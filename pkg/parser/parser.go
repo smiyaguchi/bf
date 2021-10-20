@@ -85,10 +85,10 @@ func prefixSpaceNum(str string) int {
 	if !strings.HasPrefix(str, " ") {
 		return lineRowKeyPrefixSpaceNum
 	}
-	if str[0:4] == lineValuePrefixSpace {
+	if len(str) >= 4 && str[0:4] == lineValuePrefixSpace {
 		return lineValuePrefixSpaceNum
 	}
-	if str[0:2] == lineQualifiersPrefixSpace {
+	if len(str) >= 2 && str[0:2] == lineQualifiersPrefixSpace {
 		return lineQualifiersPrefixSpaceNum
 	}
 	return -1
