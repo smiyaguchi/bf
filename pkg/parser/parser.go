@@ -40,25 +40,24 @@ func (p *Parser) splitRows(str string) []string {
 	return strings.Split(str, rowDelimiter+"\n")
 }
 
+const (
+	lineQualifiersPrefixSpace    = "  "
+	lineValuePrefixSpace         = "    "
+	lineRowKeyPrefixSpaceNum     = 0
+	lineQualifiersPrefixSpaceNum = 2
+	lineValuePrefixSpaceNum      = 4
+)
+
 func (p *Parser) parseRow(str string) Row {
 	row := Row{Columns: make(map[string][]Cell, 0)}
 	scanner := bufio.NewScanner(strings.NewReader(str))
 	for scanner.Scan() {
 		l := scanner.Text()
-		if !strings.HasPrefix(l, " ") {
-			// rowkey
+		spaceNum := prefixSpaceNum(l)
+		switch spaceNum {
+		case lineRowKeyPrefixSpaceNum:
 			row.Key = l
-			continue
-		}
-		if strings.HasPrefix(l, strings.Repeat(" ", 4)) {
-			// value
-			c := Cell{
-				Value:     l[4:],
-				Timestamp: p.curTimestamp,
-			}
-			p.curCells = append(p.curCells, c)
-		} else {
-			// column
+		case lineQualifiersPrefixSpaceNum:
 			q, t := p.parseColumn(l)
 			if _, ok := row.Columns[q]; !ok {
 				if p.curQualifiers != "" && q != p.curQualifiers {
@@ -68,10 +67,31 @@ func (p *Parser) parseRow(str string) Row {
 			}
 			p.curQualifiers = q
 			p.curTimestamp = t
+		case lineValuePrefixSpaceNum:
+			c := Cell{
+				Value:     l[4:],
+				Timestamp: p.curTimestamp,
+			}
+			p.curCells = append(p.curCells, c)
+		default:
+			panic("Not support line format")
 		}
 	}
 	row.Columns[p.curQualifiers] = p.curCells
 	return row
+}
+
+func prefixSpaceNum(str string) int {
+	if !strings.HasPrefix(str, " ") {
+		return lineRowKeyPrefixSpaceNum
+	}
+	if str[0:4] == lineValuePrefixSpace {
+		return lineValuePrefixSpaceNum
+	}
+	if str[0:2] == lineQualifiersPrefixSpace {
+		return lineQualifiersPrefixSpaceNum
+	}
+	return -1
 }
 
 func (p *Parser) parseColumn(str string) (string, string) {
